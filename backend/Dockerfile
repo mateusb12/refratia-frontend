@@ -6,7 +6,10 @@ COPY *.go ./
 RUN CGO_ENABLED=0 go build -o /server .
 
 FROM alpine:3.20
-RUN apk add --no-cache poppler-utils
+RUN apk add --no-cache \
+    poppler-utils \
+    tesseract-ocr \
+    tesseract-ocr-data-eng
 COPY --from=build /server /server
 EXPOSE 3000
 CMD ["/server"]

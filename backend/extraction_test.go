@@ -164,8 +164,8 @@ func TestNormalizeExtractionMetadataMovesIdentityVerification(t *testing.T) {
 			},
 			"verificacao_identidade": []any{
 				map[string]any{
-					"nome":       "ROLMEY ARANTES SILVA",
-					"nascimento": "05/12/1967",
+					"nome":       "PACIENTE TESTE SILVA",
+					"nascimento": "03/04/1980",
 				},
 			},
 		},

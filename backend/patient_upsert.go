@@ -53,11 +53,11 @@ func canonicalPatientBirthDate(analysis map[string]any) (string, bool) {
 	// "normalized" produzidas pelo modelo.
 	//
 	// Exemplo real do Pentacam:
-	//   nascimento_lido = 05/12/1967
-	//   timestamp_lido  = 07/30/2026
+	//   nascimento_lido = 03/04/1980
+	//   timestamp_lido  = 08/31/2026
 	//
 	// Como 30 não pode ser mês, o documento está em MM/DD/YYYY.
-	// Portanto 05/12/1967 = 1967-05-12.
+	// Portanto 03/04/1980 = 1980-03-04.
 
 	rawBirthDates := make([]string, 0)
 	dateOrder := ""

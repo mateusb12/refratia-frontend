@@ -104,34 +104,84 @@ func intakeMetadata(files []uploadedFile) []intakeFile {
 }
 
 func extractPatient(ctx context.Context, files []uploadedFile) (map[string]any, error) {
-	prepared, err := prepareExtractionFiles(ctx, files)
-	if err != nil {
-		return nil, err
+	analysis := extractPatientLocal(ctx, files)
+	gaps := collectLocalGaps(analysis, files)
+
+	var prepared []preparedFile
+
+	if len(gaps) > 0 {
+		fallbackFiles := localFallbackFiles(analysis, files)
+
+		var err error
+		prepared, err = prepareExtractionFiles(ctx, fallbackFiles)
+		if err != nil {
+			return nil, err
+		}
+
+		output, err := requestOpenAIPreparedJSON(
+			ctx,
+			prepared,
+			extractionPromptForLocalGaps(analysis, gaps),
+			40000,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		fallback, err := decodeAnalysis(output)
+		if err != nil {
+			return nil, err
+		}
+
+		resolved := localResolvedExamKeys(analysis)
+		stripLocallyResolvedExams(fallback, resolved)
+		mergeFallbackAnalysis(analysis, fallback)
 	}
-	output, err := requestOpenAIPreparedJSON(ctx, prepared, extractionPrompt, 40000)
-	if err != nil {
-		return nil, err
-	}
-	analysis, err := decodeAnalysis(output)
-	if err != nil {
-		return nil, err
-	}
+
 	if repairFiles := pentacamFilesNeedingRepair(analysis, files); len(repairFiles) > 0 {
-		if repairOutput, repairErr := requestOpenAIPreparedJSON(ctx, prepareRepairFiles(repairFiles, prepared), pentacamRepairPrompt, 5000); repairErr == nil {
+		if prepared == nil {
+			var err error
+			prepared, err = prepareExtractionFiles(ctx, files)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		if repairOutput, repairErr := requestOpenAIPreparedJSON(
+			ctx,
+			prepareRepairFiles(repairFiles, prepared),
+			pentacamRepairPrompt,
+			5000,
+		); repairErr == nil {
 			var repair map[string]any
 			if json.Unmarshal([]byte(repairOutput), &repair) == nil {
 				mergePentacamRepair(analysis, repair)
 			}
 		}
 	}
+
 	if repairFiles := iolFilesNeedingRepair(analysis, files); len(repairFiles) > 0 {
-		if repairOutput, repairErr := requestOpenAIPreparedJSON(ctx, prepareRepairFiles(repairFiles, prepared), iolRepairPrompt, 5000); repairErr == nil {
+		if prepared == nil {
+			var err error
+			prepared, err = prepareExtractionFiles(ctx, files)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		if repairOutput, repairErr := requestOpenAIPreparedJSON(
+			ctx,
+			prepareRepairFiles(repairFiles, prepared),
+			iolRepairPrompt,
+			5000,
+		); repairErr == nil {
 			var repair map[string]any
 			if json.Unmarshal([]byte(repairOutput), &repair) == nil {
 				mergeIOLRepair(analysis, repair)
 			}
 		}
 	}
+
 	enrichSourceFiles(analysis, files)
 	return analysis, nil
 }

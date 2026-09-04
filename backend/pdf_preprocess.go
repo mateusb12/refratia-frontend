@@ -105,6 +105,54 @@ func runPDFCommand(ctx context.Context, name string, data []byte) (string, error
 }
 
 func renderPDFPages(ctx context.Context, data []byte, pages int) ([][]byte, error) {
+	return renderPDFPagesAtDPI(ctx, data, pages, 180)
+}
+
+func renderPDFPageAtDPI(ctx context.Context, data []byte, page, dpi int) ([]byte, error) {
+	input, err := os.CreateTemp("", "refratia-page-*.pdf")
+	if err != nil {
+		return nil, err
+	}
+	inputPath := input.Name()
+	defer os.Remove(inputPath)
+
+	if _, err := input.Write(data); err != nil {
+		input.Close()
+		return nil, err
+	}
+	if err := input.Close(); err != nil {
+		return nil, err
+	}
+
+	directory, err := os.MkdirTemp("", "refratia-page-png-")
+	if err != nil {
+		return nil, err
+	}
+	defer os.RemoveAll(directory)
+
+	prefix := filepath.Join(directory, "page")
+	command := exec.CommandContext(
+		ctx,
+		"pdftoppm",
+		"-f", strconv.Itoa(page),
+		"-singlefile",
+		"-png",
+		"-r", strconv.Itoa(dpi),
+		inputPath,
+		prefix,
+	)
+	if output, err := command.CombinedOutput(); err != nil {
+		return nil, fmt.Errorf("pdftoppm: %s", strings.TrimSpace(string(output)))
+	}
+
+	image, err := os.ReadFile(prefix + ".png")
+	if err != nil {
+		return nil, fmt.Errorf("página %d: %w", page, err)
+	}
+	return image, nil
+}
+
+func renderPDFPagesAtDPI(ctx context.Context, data []byte, pages, dpi int) ([][]byte, error) {
 	input, err := os.CreateTemp("", "refratia-pages-*.pdf")
 	if err != nil {
 		return nil, err
@@ -124,7 +172,7 @@ func renderPDFPages(ctx context.Context, data []byte, pages int) ([][]byte, erro
 	}
 	defer os.RemoveAll(directory)
 	prefix := filepath.Join(directory, "page")
-	command := exec.CommandContext(ctx, "pdftoppm", "-png", "-r", "180", inputPath, prefix)
+	command := exec.CommandContext(ctx, "pdftoppm", "-png", "-r", strconv.Itoa(dpi), inputPath, prefix)
 	if output, err := command.CombinedOutput(); err != nil {
 		return nil, fmt.Errorf("pdftoppm: %s", strings.TrimSpace(string(output)))
 	}

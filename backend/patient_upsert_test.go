@@ -5,8 +5,8 @@ import "testing"
 func TestPatientIdentityNormalizesNameAndBirthDate(t *testing.T) {
 	analysis := map[string]any{
 		"patient": map[string]any{
-			"full_name":  "  Rólmey   Arantes-Silva ",
-			"birth_date": "1967-05-12",
+			"full_name":  "  Paciente   Teste-Silva ",
+			"birth_date": "1980-03-04",
 		},
 	}
 
@@ -15,7 +15,7 @@ func TestPatientIdentityNormalizesNameAndBirthDate(t *testing.T) {
 		t.Fatal("expected patient to be identifiable")
 	}
 
-	if identity != "rolmey arantes silva|1967-05-12" {
+	if identity != "paciente teste silva|1980-03-04" {
 		t.Fatalf("unexpected identity: %q", identity)
 	}
 }
@@ -23,7 +23,7 @@ func TestPatientIdentityNormalizesNameAndBirthDate(t *testing.T) {
 func TestPatientIdentityRequiresBirthDate(t *testing.T) {
 	analysis := map[string]any{
 		"patient": map[string]any{
-			"full_name": "Rolmey Arantes Silva",
+			"full_name": "Paciente Teste Silva",
 		},
 	}
 
@@ -35,8 +35,8 @@ func TestPatientIdentityRequiresBirthDate(t *testing.T) {
 func TestMergePatientCaseAddsPreviouslyMissingExam(t *testing.T) {
 	existing := map[string]any{
 		"patient": map[string]any{
-			"full_name":  "Rolmey Arantes Silva",
-			"birth_date": "1967-05-12",
+			"full_name":  "Paciente Teste Silva",
+			"birth_date": "1980-03-04",
 		},
 		"source_files": []any{},
 		"exams": map[string]any{
@@ -51,8 +51,8 @@ func TestMergePatientCaseAddsPreviouslyMissingExam(t *testing.T) {
 
 	incoming := map[string]any{
 		"patient": map[string]any{
-			"full_name":  "Rolmey Arantes Silva",
-			"birth_date": "1967-05-12",
+			"full_name":  "Paciente Teste Silva",
+			"birth_date": "1980-03-04",
 		},
 		"source_files": []any{},
 		"exams": map[string]any{
@@ -315,15 +315,15 @@ func TestMergePatientCaseRebuildsPentacamSourceInEyeOrder(t *testing.T) {
 func TestPatientIdentityUsesDocumentDateOrderInsteadOfModelNormalizedDate(t *testing.T) {
 	analysis := map[string]any{
 		"patient": map[string]any{
-			"full_name": "ROLMEY ARANTES SILVA",
+			"full_name": "PACIENTE TESTE SILVA",
 			"birth_date": map[string]any{
-				"normalized": "1967-12-05",
+				"normalized": "1980-04-03",
 			},
 		},
 		"verificacao_identidade": []any{
 			map[string]any{
-				"nascimento_lido": "05/12/1967",
-				"timestamp_lido":  "07/30/2026 11:52:26",
+				"nascimento_lido": "03/04/1980",
+				"timestamp_lido":  "08/31/2026 10:15:00",
 			},
 		},
 	}
@@ -333,7 +333,7 @@ func TestPatientIdentityUsesDocumentDateOrderInsteadOfModelNormalizedDate(t *tes
 		t.Fatal("expected patient identity to be deterministically resolved")
 	}
 
-	if identity != "rolmey arantes silva|1967-05-12" {
+	if identity != "paciente teste silva|1980-03-04" {
 		t.Fatalf("unexpected identity: %q", identity)
 	}
 }
@@ -341,28 +341,28 @@ func TestPatientIdentityUsesDocumentDateOrderInsteadOfModelNormalizedDate(t *tes
 func TestPatientIdentityMatchesBothObservedPentacamShapes(t *testing.T) {
 	od := map[string]any{
 		"patient": map[string]any{
-			"full_name": "ROLMEY ARANTES SILVA",
+			"full_name": "PACIENTE TESTE SILVA",
 			"birth_date": map[string]any{
-				"normalized": "1967-12-05",
+				"normalized": "1980-04-03",
 			},
 		},
 		"verificacao_identidade": []any{
 			map[string]any{
-				"nascimento_lido": "05/12/1967",
-				"timestamp_lido":  "07/30/2026 11:52:26",
+				"nascimento_lido": "03/04/1980",
+				"timestamp_lido":  "08/31/2026 10:15:00",
 			},
 		},
 	}
 
 	os := map[string]any{
 		"patient": map[string]any{
-			"full_name":             "ROLMEY ARANTES SILVA",
-			"birth_date_normalized": "1967-12-05",
+			"full_name":             "PACIENTE TESTE SILVA",
+			"birth_date_normalized": "1980-04-03",
 		},
 		"verificacao_identidade": []any{
 			map[string]any{
-				"nascimento_lido": "05/12/1967",
-				"timestamp_lido":  "07/30/2026 11:53:45",
+				"nascimento_lido": "03/04/1980",
+				"timestamp_lido":  "08/31/2026 10:16:00",
 			},
 		},
 	}
@@ -382,7 +382,7 @@ func TestPatientIdentityMatchesBothObservedPentacamShapes(t *testing.T) {
 		)
 	}
 
-	if odIdentity != "rolmey arantes silva|1967-05-12" {
+	if odIdentity != "paciente teste silva|1980-03-04" {
 		t.Fatalf("unexpected canonical identity: %q", odIdentity)
 	}
 }
@@ -390,12 +390,12 @@ func TestPatientIdentityMatchesBothObservedPentacamShapes(t *testing.T) {
 func TestPatientIdentityRejectsAmbiguousSlashDateWithoutContext(t *testing.T) {
 	analysis := map[string]any{
 		"patient": map[string]any{
-			"full_name":             "ROLMEY ARANTES SILVA",
-			"birth_date_normalized": "1967-12-05",
+			"full_name":             "PACIENTE TESTE SILVA",
+			"birth_date_normalized": "1980-04-03",
 		},
 		"verificacao_identidade": []any{
 			map[string]any{
-				"nascimento_lido": "05/12/1967",
+				"nascimento_lido": "03/04/1980",
 			},
 		},
 	}
@@ -473,9 +473,9 @@ func TestMergeSourceFilesReplacesEyeWhenExamIsArray(t *testing.T) {
 func TestNormalizePatientIdentityFieldsRemovesWrongNormalizedAlias(t *testing.T) {
 	analysis := map[string]any{
 		"patient": map[string]any{
-			"full_name":             "ROLMEY ARANTES SILVA",
-			"birth_date":            "1967-05-12",
-			"birth_date_normalized": "1967-12-05",
+			"full_name":             "PACIENTE TESTE SILVA",
+			"birth_date":            "1980-03-04",
+			"birth_date_normalized": "1980-04-03",
 		},
 	}
 
@@ -483,7 +483,7 @@ func TestNormalizePatientIdentityFieldsRemovesWrongNormalizedAlias(t *testing.T)
 
 	patient := analysis["patient"].(map[string]any)
 
-	if patient["birth_date"] != "1967-05-12" {
+	if patient["birth_date"] != "1980-03-04" {
 		t.Fatalf("unexpected canonical birth date: %#v", patient["birth_date"])
 	}
 
@@ -495,9 +495,9 @@ func TestNormalizePatientIdentityFieldsRemovesWrongNormalizedAlias(t *testing.T)
 func TestMergePatientCaseRemovesLegacyBirthDateAlias(t *testing.T) {
 	existing := map[string]any{
 		"patient": map[string]any{
-			"full_name":             "ROLMEY ARANTES SILVA",
-			"birth_date":            "1967-05-12",
-			"birth_date_normalized": "1967-12-05",
+			"full_name":             "PACIENTE TESTE SILVA",
+			"birth_date":            "1980-03-04",
+			"birth_date_normalized": "1980-04-03",
 		},
 		"source_files": []any{},
 		"exams":        map[string]any{},
@@ -505,8 +505,8 @@ func TestMergePatientCaseRemovesLegacyBirthDateAlias(t *testing.T) {
 
 	incoming := map[string]any{
 		"patient": map[string]any{
-			"full_name":  "ROLMEY ARANTES SILVA",
-			"birth_date": "1967-05-12",
+			"full_name":  "PACIENTE TESTE SILVA",
+			"birth_date": "1980-03-04",
 		},
 		"source_files": []any{},
 		"exams":        map[string]any{},
@@ -515,7 +515,7 @@ func TestMergePatientCaseRemovesLegacyBirthDateAlias(t *testing.T) {
 	merged := mergePatientCase(existing, incoming)
 	patient := merged["patient"].(map[string]any)
 
-	if patient["birth_date"] != "1967-05-12" {
+	if patient["birth_date"] != "1980-03-04" {
 		t.Fatalf("unexpected canonical birth date: %#v", patient["birth_date"])
 	}
 
