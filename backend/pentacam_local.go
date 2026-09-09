@@ -141,6 +141,20 @@ func extractPentacamPDFLocal(ctx context.Context, data []byte) (map[string]any, 
 		}
 	}
 
+	// Rescue determinístico tolerante a pequenas variações de layout.
+	// Executa somente quando o caminho local principal ainda deixou gap.
+	if current, exists := values["k1_d"]; !exists || current == nil {
+		if value, ok := readPentacamK1Adaptive(ctx, data); ok {
+			values["k1_d"] = value
+		}
+	}
+
+	if current, exists := values["acd_internal_mm"]; !exists || current == nil {
+		if value, ok := readPentacamACDAdaptive(ctx, data); ok {
+			values["acd_internal_mm"] = value
+		}
+	}
+
 	return map[string]any{
 		"anterior_cornea": map[string]any{
 			"k1_d":          values["k1_d"],
