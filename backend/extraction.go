@@ -138,27 +138,8 @@ func extractPatient(ctx context.Context, files []uploadedFile) (map[string]any, 
 		mergeFallbackAnalysis(analysis, fallback)
 	}
 
-	if repairFiles := pentacamFilesNeedingRepair(analysis, files); len(repairFiles) > 0 {
-		if prepared == nil {
-			var err error
-			prepared, err = prepareExtractionFiles(ctx, files)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		if repairOutput, repairErr := requestOpenAIPreparedJSON(
-			ctx,
-			prepareRepairFiles(repairFiles, prepared),
-			pentacamRepairPrompt,
-			5000,
-		); repairErr == nil {
-			var repair map[string]any
-			if json.Unmarshal([]byte(repairOutput), &repair) == nil {
-				mergePentacamRepair(analysis, repair)
-			}
-		}
-	}
+	// Pentacam usa somente o fallback local-first acima.
+	// Não executar uma segunda chamada OpenAI para o mesmo exame.
 
 	if repairFiles := iolFilesNeedingRepair(analysis, files); len(repairFiles) > 0 {
 		if prepared == nil {

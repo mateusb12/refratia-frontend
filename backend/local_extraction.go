@@ -16,37 +16,41 @@ func extractPatientLocal(ctx context.Context, files []uploadedFile) map[string]a
 			continue
 		}
 
-		bundle, err := extractEyeSuitePDFLocalBundle(ctx, file.Data)
-		if err != nil {
+		// EyeSuite: exame + identidade local completos quando possível.
+		if bundle, err := extractEyeSuitePDFLocalBundle(ctx, file.Data); err == nil {
+			bundle.Exam["source"] = []any{file.Metadata.Filename}
+			exams["iol_calculation"] = bundle.Exam
+
+			if bundle.Identity != nil {
+				patient := map[string]any{
+					"full_name": bundle.Identity.FullName,
+				}
+				analysis["patient"] = patient
+
+				analysis["verificacao_identidade"] = []any{
+					map[string]any{
+						"source":          file.Metadata.Filename,
+						"nome_lido":       bundle.Identity.FullName,
+						"nascimento_lido": bundle.Identity.BirthDateRaw,
+						"timestamp_lido":  bundle.Identity.TimestampRaw,
+						"confidence":      "deterministic_template",
+						"method":          "local_ocr_tesseract",
+					},
+				}
+
+				if birthDate, ok := canonicalPatientBirthDate(analysis); ok {
+					patient["birth_date"] = birthDate
+				}
+			}
+
 			continue
 		}
 
-		bundle.Exam["source"] = []any{file.Metadata.Filename}
-		exams["iol_calculation"] = bundle.Exam
-
-		if bundle.Identity != nil {
-			patient := map[string]any{
-				"full_name": bundle.Identity.FullName,
-			}
-			analysis["patient"] = patient
-
-			analysis["verificacao_identidade"] = []any{
-				map[string]any{
-					"source":          file.Metadata.Filename,
-					"nome_lido":       bundle.Identity.FullName,
-					"nascimento_lido": bundle.Identity.BirthDateRaw,
-					"timestamp_lido":  bundle.Identity.TimestampRaw,
-					"confidence":      "deterministic_template",
-					"method":          "local_ocr_tesseract",
-				},
-			}
-
-			if birthDate, ok := canonicalPatientBirthDate(analysis); ok {
-				patient["birth_date"] = birthDate
-			}
+		// Pentacam: aceita resultado parcial.
+		// Campos ausentes serão gaps para o fallback.
+		if tryExtractPentacamLocal(ctx, file, analysis) {
+			continue
 		}
-
-		break
 	}
 
 	return analysis
@@ -58,6 +62,10 @@ func localResolvedExamKeys(analysis map[string]any) map[string]bool {
 
 	if exam, _ := exams["iol_calculation"].(map[string]any); exam != nil && !iolNeedsRepair(exam) {
 		resolved["iol_calculation"] = true
+	}
+
+	if pentacamLocalComplete(analysis) {
+		resolved["pentacam_corneal_tomography"] = true
 	}
 
 	return resolved
@@ -134,6 +142,10 @@ func collectLocalGaps(analysis map[string]any, files []uploadedFile) []string {
 		add("patient_identity")
 	}
 
+	for _, gap := range pentacamLocalGaps(analysis) {
+		add(gap)
+	}
+
 	claimed := localClaimedFiles(analysis)
 	identitySources := localIdentitySources(analysis)
 
@@ -167,29 +179,46 @@ func mergeFallbackAnalysis(local, fallback map[string]any) {
 	}
 }
 
-func extractionPromptForLocalGaps(analysis map[string]any, gaps []string) string {
+func extractionPromptForLocalGaps(
+	analysis map[string]any,
+	gaps []string,
+) string {
 	resolved := localResolvedExamKeys(analysis)
 	keys := make([]string, 0, len(resolved))
+
 	for key := range resolved {
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
 
-	if len(keys) == 0 {
-		return extractionPrompt
+	resolvedText := "nenhum"
+	if len(keys) > 0 {
+		resolvedText = strings.Join(keys, ", ")
 	}
 
 	return extractionPrompt + fmt.Sprintf(`
 
-MODO FALLBACK:
-A extração determinística local já resolveu completamente estes exames:
+MODO FALLBACK LOCAL-FIRST:
+
+O backend determinístico já processou os arquivos antes desta chamada.
+
+Exames completamente resolvidos localmente:
 %s
 
-NÃO extraia nem retorne esses exames em "exams".
-Use este fallback exclusivamente para informações ainda ausentes.
-Gaps atualmente conhecidos: %s.
-Não altere nem reinterprete dados já resolvidos localmente.`,
-		strings.Join(keys, ", "),
+Gaps exatos ainda conhecidos:
+%s
+
+REGRAS OBRIGATÓRIAS DO FALLBACK:
+- preencha somente informações realmente ausentes;
+- em exames parcialmente resolvidos, retorne somente os subcampos correspondentes aos gaps acima;
+- não reinterprete, corrija ou substitua valores que já foram resolvidos localmente;
+- para patient_identity/document_identity, extraia somente a identificação necessária;
+- não invente valores para gaps ilegíveis;
+- campos não solicitados podem ser omitidos ou permanecer null;
+- preserve lateralidade OD/OS do documento.
+
+Os valores locais são autoritativos e serão preservados pelo backend.`,
+		resolvedText,
 		strings.Join(gaps, ", "),
 	)
 }
